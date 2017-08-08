@@ -13,3 +13,7 @@ func (this Car) GetRegNo() string{
 func (this Car) GetColor() string{
     return this.color
 }
+
+func Create(regNo string, color string) Car {
+    return Car{regNo:regNo, color:color}
+}

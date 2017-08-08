@@ -1,7 +1,4 @@
-package parking_lot
-
-import     "container/heap"
-
+package parkingLot
 
 type IntHeap []int
 

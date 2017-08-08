@@ -1,4 +1,4 @@
-package parking_lot
+package parkingLot
 
 import (
     "sync"
@@ -7,6 +7,7 @@ import (
     "container/heap"
     "fmt"
     "strings"
+    "strconv"
 )
 
 var instance *ParkingLot
@@ -17,7 +18,7 @@ type ParkingLot struct {
     maxSize int // max size of the parking lot
     isParkingLotCreated bool // check if parking lot has been initialized or not
     regNoSlotMap map[string]int // Map of registration number to the slot
-    slotCarMap map[string]Car // Map of Slots to Cars
+    slotCarMap map[int]Car // Map of Slots to Cars
     colorRegNoMap map[string]map[string]bool // Map of Car Color to registration number Hast set(implemented as another map of string to bool)
 }
 
@@ -34,21 +35,26 @@ func GetInstance() *ParkingLot {
 }
 
 func (this *ParkingLot) Initialize(numberOfSlots int) {
-    if !numberOfSlots {
-        fmt.Println("Parking Lot of Size 0 cannot be created")
+    if numberOfSlots <= 0 {
+        fmt.Println("Parking Lot of Size <= 0 cannot be created")
         return
     }
-    a := make([]int, numberOfSlots)
-    for i := range a {
-        a[i] = 1 + i
+
+    this.emptySlots = IntHeap{}
+    i := 1
+    for i <= numberOfSlots {
+        this.emptySlots = append(this.emptySlots, i)
+        i++
     }
-    this.emptySlots = &IntHeap{a}
-    heap.Init(this.emptySlots)
+
+    heap.Init(&this.emptySlots)
     this.slotCarMap = map[int]Car{}
     this.colorRegNoMap = map[string]map[string]bool{}
     this.regNoSlotMap = map[string]int{}
     this.maxSize = numberOfSlots
     this.isParkingLotCreated = true
+
+    fmt.Println("Created a parking lot with " + strconv.Itoa(numberOfSlots) + " slots")
 }
 
 func (this *ParkingLot) mapRegNoToSlot(regNo string, slot int) {
@@ -62,6 +68,7 @@ func (this *ParkingLot) unmapRegNo(regNo string) {
 
 func (this *ParkingLot) mapSlotToCar(slot int, car Car) {
     this.slotCarMap[slot] = car;
+
 }
 
 
@@ -93,11 +100,17 @@ func (this *ParkingLot) Park(car Car) {
     if (this.emptySlots.Len() == 0) {
         fmt.Println("Sorry, parking lot is full");
     } else {
-        emptySlot := this.emptySlots.Pop()
-        this.mapRegNoToSlot(car.GetRegNo(), emptySlot)
-        this.mapSlotToCar(emptySlot, car)
-        this.mapColorToRegNo(car.GetColor(), car.GetRegNo())
-        fmt.Println("Allocated slot number: " + emptySlot);
+
+        if slot := this.GetSlotNoForRegNo(car.GetRegNo(), false); slot == 0 {
+            emptySlot := heap.Pop(&this.emptySlots)
+            this.mapRegNoToSlot(car.GetRegNo(), emptySlot.(int))
+            this.mapSlotToCar(emptySlot.(int), car)
+            this.mapColorToRegNo(car.GetColor(), car.GetRegNo())
+            fmt.Println("Allocated slot number: " + strconv.Itoa(emptySlot.(int)));
+        } else {
+            fmt.Println("Car with this registration number already parked at slot: " + strconv.Itoa(slot));
+        }
+
     }
 }
 
@@ -108,10 +121,11 @@ func (this *ParkingLot) Leave(slot int) {
     }
 
     if car, exists := this.slotCarMap[slot]; exists {
+        heap.Push(&this.emptySlots, slot)
         this.unmapRegNo(car.GetRegNo())
         this.unmapRegNoFromColorMap(car.GetColor(), car.GetRegNo())
         this.unmapSlot(slot)
-        fmt.Println("Slot number" + slot + "is free")
+        fmt.Println("Slot number " + strconv.Itoa(slot) + " is free")
     } else {
         fmt.Println("No car parked on given slot")
     }
@@ -127,15 +141,18 @@ func (this *ParkingLot) Status() {
     i := 1
     for i <= this.maxSize {
         if car, exists := this.slotCarMap[i]; exists {
-           fmt.Println(i + "\t" + car.GetRegNo() + "\t" + car.GetColor())
+           fmt.Println(strconv.Itoa(i) + "\t" + car.GetRegNo() + "\t" + car.GetColor())
         }
+        i++
     }
 }
 
-func (this *ParkingLot) GetRegNosForCarsWithColor(color string) []string{
+func (this *ParkingLot) GetRegNosForCarsWithColor(color string, print bool) []string{
     if (!this.isParkingLotCreated) {
-        fmt.Println("Parking Lot not created")
-        return
+        if print {
+            fmt.Println("Parking Lot not created")
+        }
+        return []string{}
     }
 
     regNoSlice := []string{}
@@ -145,11 +162,14 @@ func (this *ParkingLot) GetRegNosForCarsWithColor(color string) []string{
         }
     }
 
-    if len(regNoSlice) > 0 {
-        fmt.Println(strings.Join(regNoSlice, ","))
-    } else {
-        fmt.Println("No cars found with given colour")
+    if print {
+        if len(regNoSlice) > 0 {
+            fmt.Println(strings.Join(regNoSlice, ","))
+        } else {
+            fmt.Println("No cars found with given colour")
+        }
     }
+
     return regNoSlice
 }
 
@@ -159,32 +179,40 @@ func (this *ParkingLot) GetSlotNosForCarsWithColor(color string) {
         return
     }
 
-    regNos := this.GetRegNosForCarsWithColor(color)
-    slots := []int{}
-    for regNo := range regNos {
+    regNos := this.GetRegNosForCarsWithColor(color, false)
+    slots := []string{}
+    for _, regNo := range regNos {
         if slot, exists := this.regNoSlotMap[regNo]; exists {
-            slots = append(slots, slot)
+            slots = append(slots, strconv.Itoa(slot))
         }
     }
 
     if len(slots) > 0 {
         fmt.Println(strings.Join(slots, ","))
     } else {
-        fmt.Println("No cards found for given colour")
+        fmt.Println("No cars found for given colour")
     }
 
 }
 
-func (this *ParkingLot) GetSlotNoForRegNo(regNo string) {
+func (this *ParkingLot) GetSlotNoForRegNo(regNo string, print bool) int {
     if (!this.isParkingLotCreated) {
-        fmt.Println("Parking Lot not created")
-        return
+        if print {
+            fmt.Println("Parking Lot not created")
+        }
+        return 0
     }
 
     if slot, exists := this.regNoSlotMap[regNo]; exists {
-        fmt.Println(slot)
+        if print {
+            fmt.Println(slot)
+        }
+        return slot
     } else {
-        fmt.Println("Car with this registration no not parked in any slot")
+        if print {
+            fmt.Println("Car with this registration no not parked in any slot")
+        }
+        return 0
     }
 }
 
