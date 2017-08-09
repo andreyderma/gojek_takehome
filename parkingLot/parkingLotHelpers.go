@@ -3,7 +3,6 @@ package parkingLot
 import (
     . "github.com/mohakkataria/gojek_takehome/car"
     "errors"
-    "fmt"
 )
 
 // Declaration of Error Constants
@@ -54,19 +53,15 @@ func (this *parkingLot) unmapRegNoFromColorMap(color string, regNo string) {
 func (this *parkingLot) isParkingLotFull() (bool, error) {
     if this.emptySlots.Len() == 0 {
         err := errors.New(PARKING_LOT_FULL_ERROR)
-        fmt.Println(err.Error())
         return true, err
     }
     return false, nil
 }
 
 // Verify if parking lot is created
-func (this *parkingLot) isparkingLotCreated(print bool) (bool, error) {
+func (this *parkingLot) isparkingLotCreated() (bool, error) {
     if !this.isParkingLotCreated {
         err := errors.New(PARKING_LOT_NOT_CREATED_ERROR)
-        if print {
-            fmt.Println(err.Error())
-        }
         return false, err
     }
     return true, nil
@@ -75,8 +70,7 @@ func (this *parkingLot) isparkingLotCreated(print bool) (bool, error) {
 // Verify if NumberOfSlots is correct number or not
 func (this *parkingLot) verifySlotInitialization(numberOfSlots int) (bool, error){
     if numberOfSlots <= 0 {
-        err := errors.New(PARKING_LOT_NOT_CREATED_ERROR)
-        fmt.Println(err.Error())
+        err := errors.New(WRONG_SIZE_PARKING_LOT_ERROR)
         return false, err
     }
     return true, nil

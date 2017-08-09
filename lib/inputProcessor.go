@@ -47,6 +47,8 @@ func processCommand(command string) bool {
             return false
         }
 
+        w := &ErrWrapper{}
+
         // after validation of number of arguments per command, perform the necessary command
         switch command {
         case "create_parking_lot":
@@ -61,52 +63,46 @@ func processCommand(command string) bool {
             regNo := arguments[0]
             color := arguments[1]
             car := car.Create(regNo, color)
-            err := parkingLot.Park(car)
-            if err != nil {
-                return false
-            }
-            return true
+
+            return w.do(func() error {
+                return parkingLot.Park(car)
+            })
 
         case "leave":
             if slot, err := strconv.Atoi(arguments[0]); err != nil {
                 fmt.Println("Error : " + err.Error())
                 return false
             } else {
-                err := parkingLot.Leave(slot)
-                if err != nil {
-                    return false
-                }
-                return true
+                return w.do(func() error {
+                    return parkingLot.Leave(slot)
+                })
             }
 
         case "status":
-            parkingLot.Status()
-            return true
+            return w.do(func() error {
+                return parkingLot.Status()
+            })
 
         case "registration_numbers_for_cars_with_colour":
             color := arguments[0]
-            _, err := parkingLot.GetRegNosForCarsWithColor(color, true)
-            if err != nil {
-                return false
-            }
-            return true
+            return w.do(func() error {
+                _, err := parkingLot.GetRegNosForCarsWithColor(color, true)
+                return err
+            })
 
         case "slot_numbers_for_cars_with_colour":
             color := arguments[0]
-            err := parkingLot.GetSlotNosForCarsWithColor(color)
-            if err != nil {
-                return false
-            }
-            return true
+            return w.do(func() error {
+                return parkingLot.GetSlotNosForCarsWithColor(color)
+            })
 
 
         case "slot_number_for_registration_number":
             regNo := arguments[0]
-            _, err := parkingLot.GetSlotNoForRegNo(regNo, true)
-            if err != nil {
-                return false
-            }
-            return true
+            return w.do(func() error {
+                _, err := parkingLot.GetSlotNoForRegNo(regNo, true)
+                return err
+            })
 
         default:
             return false
