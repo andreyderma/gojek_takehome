@@ -54,8 +54,7 @@ func processCommand(command string) bool {
                 fmt.Println("Error : " + err.Error())
                 return false
             } else {
-                parkingLot.Initialize(numberOfSlots)
-                return true
+                return parkingLot.Initialize(numberOfSlots)
             }
 
         case "park":

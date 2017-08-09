@@ -48,11 +48,10 @@ func GetInstance() *parkingLot {
 
 
 // Initialize all the data structures and fix the value of MaxSlots of Parking Lot
-func Initialize(numberOfSlots int) {
+func Initialize(numberOfSlots int) bool {
     this := GetInstance()
-    if numberOfSlots <= 0 {
-        fmt.Println("Parking Lot of Size <= 0 cannot be created")
-        return
+    if _, err := this.verifySlotInitialization(numberOfSlots); err != nil {
+        return false
     }
 
     this.emptySlots = helpers.IntHeap{}
@@ -70,6 +69,7 @@ func Initialize(numberOfSlots int) {
     this.isParkingLotCreated = true
 
     fmt.Println("Created a parking lot with " + strconv.Itoa(numberOfSlots) + " slots")
+    return true
 }
 
 
@@ -79,16 +79,12 @@ func Initialize(numberOfSlots int) {
 // Rest all operations of HashMaps are O(1)
 func Park(car Car) error {
     this := GetInstance()
-    if (!this.isParkingLotCreated) {
-        err := errors.New("Parking Lot not created")
-        fmt.Println(err.Error())
+    if _, err := this.isparkingLotCreated(true); err != nil {
         return err
     }
 
     // Validate if the parking lot is already full or not
-    if (this.emptySlots.Len() == 0) {
-        err := errors.New("Sorry, parking lot is full")
-        fmt.Println(err.Error())
+    if _, err := this.isParkingLotFull(); err != nil {
         return err
     } else {
 
@@ -96,9 +92,9 @@ func Park(car Car) error {
         if slot, _ := GetSlotNoForRegNo(car.GetRegNo(), false); slot == 0 {
             // Complexity : O(log n)
             emptySlot := heap.Pop(&this.emptySlots)
-            mapRegNoToSlot(car.GetRegNo(), emptySlot.(int))
-            mapSlotToCar(emptySlot.(int), car)
-            mapColorToRegNo(car.GetColor(), car.GetRegNo())
+            this.mapRegNoToSlot(car.GetRegNo(), emptySlot.(int))
+            this.mapSlotToCar(emptySlot.(int), car)
+            this.mapColorToRegNo(car.GetColor(), car.GetRegNo())
             fmt.Println("Allocated slot number: " + strconv.Itoa(emptySlot.(int)));
             return nil
         } else {
@@ -117,9 +113,7 @@ func Park(car Car) error {
 // All other operations on HashMaps are O(1)
 func Leave(slot int) error {
     this := GetInstance()
-    if (!this.isParkingLotCreated) {
-        err := errors.New("Parking Lot not created")
-        fmt.Println(err.Error())
+    if _, err := this.isparkingLotCreated(true); err != nil {
         return err
     }
 
@@ -127,13 +121,13 @@ func Leave(slot int) error {
     if car, exists := this.slotCarMap[slot]; exists {
         // Complexity : O(log n)
         heap.Push(&this.emptySlots, slot)
-        unmapRegNo(car.GetRegNo())
-        unmapRegNoFromColorMap(car.GetColor(), car.GetRegNo())
-        unmapSlot(slot)
+        this.unmapRegNo(car.GetRegNo())
+        this.unmapRegNoFromColorMap(car.GetColor(), car.GetRegNo())
+        this.unmapSlot(slot)
         fmt.Println("Slot number " + strconv.Itoa(slot) + " is free")
         return nil
     } else {
-        err := errors.New("Not found")
+        err := errors.New(NOT_FOUND_ERROR)
         fmt.Println(err.Error())
         return err
     }
@@ -142,8 +136,7 @@ func Leave(slot int) error {
 // Output the status of the parking lot
 func Status() {
     this := GetInstance()
-    if (!this.isParkingLotCreated) {
-        fmt.Println("Parking Lot not created")
+    if _, err := this.isparkingLotCreated(true); err != nil {
         return
     }
 
@@ -157,15 +150,11 @@ func Status() {
     }
 }
 
-// Fetch the Registration Numebrs of Cars with Given Color
+// Fetch the Registration Numbers of Cars with Given Color
 // Complexity is O(1) since we have stored the data in a HashMap->HashSet
 func GetRegNosForCarsWithColor(color string, print bool) ([]string, error) {
     this := GetInstance()
-    if (!this.isParkingLotCreated) {
-        err := errors.New("Parking Lot not created")
-        if print {
-            fmt.Println(err.Error())
-        }
+    if _, err := this.isparkingLotCreated(print); err != nil {
         return []string{}, err
     }
 
@@ -176,15 +165,13 @@ func GetRegNosForCarsWithColor(color string, print bool) ([]string, error) {
         }
     }
 
-
-
     if len(regNoSlice) > 0 {
         if print {
             fmt.Println(strings.Join(regNoSlice, ","))
         }
         return regNoSlice, nil
     } else {
-        err := errors.New("Not found")
+        err := errors.New(NOT_FOUND_ERROR)
         if print {
             fmt.Println(err.Error())
         }
@@ -198,9 +185,7 @@ func GetRegNosForCarsWithColor(color string, print bool) ([]string, error) {
 // m cars, it will take m iterations to fetch slot for each registration number
 func GetSlotNosForCarsWithColor(color string) error {
     this := GetInstance()
-    if (!this.isParkingLotCreated) {
-        err := errors.New("Parking Lot not created")
-        fmt.Println(err.Error())
+    if _, err := this.isparkingLotCreated(true); err != nil {
         return err
     }
 
@@ -216,7 +201,7 @@ func GetSlotNosForCarsWithColor(color string) error {
         fmt.Println(strings.Join(slots, ","))
         return nil
     } else {
-        err := errors.New("Not found")
+        err := errors.New(NOT_FOUND_ERROR)
         fmt.Println(err.Error())
         return err
     }
@@ -227,11 +212,7 @@ func GetSlotNosForCarsWithColor(color string) error {
 // Complexity is O(1) since it is derived from a HashSet
 func GetSlotNoForRegNo(regNo string, print bool) (int, error) {
     this := GetInstance()
-    if (!this.isParkingLotCreated) {
-        err := errors.New("Parking Lot not created")
-        if print {
-            fmt.Println(err.Error())
-        }
+    if _, err := this.isparkingLotCreated(print); err != nil {
         return 0, err
     }
 
@@ -242,7 +223,7 @@ func GetSlotNoForRegNo(regNo string, print bool) (int, error) {
         }
         return slot, nil
     } else {
-        err := errors.New("Not found")
+        err := errors.New(NOT_FOUND_ERROR)
         if print {
             fmt.Println(err.Error())
         }
