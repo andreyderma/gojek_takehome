@@ -2,45 +2,60 @@ package parkingLot
 
 import (
     "sync"
-    _ "fmt"
     . "github.com/mohakkataria/gojek_takehome/car"
     "container/heap"
+    "github.com/mohakkataria/gojek_takehome/helpers"
     "fmt"
     "strings"
     "strconv"
+    "errors"
 )
 
-var instance *ParkingLot
+// Singleton Implementation of ParkingLot. Hence we use this variable to store the Instance of Parking Lot
+var instance *parkingLot
 var once sync.Once
 
-type ParkingLot struct {
-    emptySlots IntHeap // heap of empty slots to optimize to log(n) operations of allocating a smaller empty slot and vacating any given slot
-    maxSize int // max size of the parking lot
-    isParkingLotCreated bool // check if parking lot has been initialized or not
-    regNoSlotMap map[string]int // Map of registration number to the slot
-    slotCarMap map[int]Car // Map of Slots to Cars
-    colorRegNoMap map[string]map[string]bool // Map of Car Color to registration number Hast set(implemented as another map of string to bool)
-}
 
+// To solve multiple use cases, we use embedding to form a combination of data structures for a parking lot
 // colorRegNoMap,regNoSlotMap,slotCarMap is implemented in such a way such that find and remove operations are done in O(1)
 // emptySlots in implemented as Heap so that complexity of extract minimum and insert to log(n) on average. Since
 // there wasn't much information as to if either of operations of leave and park could be more than the other
-// hence a call was to taken to average out the optimality on both the operations
+// hence a call was to taken to average out the optimality on both the operations.
+// The respective explanation for each is mentioned below:
+type parkingLot struct {
+    // heap of empty slots to optimize to log(n) operations of allocating a smaller empty slot and vacating any given slot
+    emptySlots helpers.IntHeap
+    // max size of the parking lot
+    maxSize int
+    // check if parking lot has been initialized or not
+    isParkingLotCreated bool
+    // Map of registration number to the slot for answering queries of "slot_number_for_registration_number" efficiently in O(1)
+    regNoSlotMap map[string]int
+    // Map of Slots to Cars for maintaining information as to which car is parked at which slot
+    slotCarMap map[int]Car
+    // Map of Car Color to registration number Hast set(implemented as another map of string to bool)
+    // Used for answering queries of "slot_number_for_registration_number" efficiently in O(1)
+    colorRegNoMap map[string]map[string]bool
+}
 
-func GetInstance() *ParkingLot {
+// Get Instance of Parking lot
+func GetInstance() *parkingLot {
     once.Do(func() {
-        instance = &ParkingLot{}
+        instance = &parkingLot{}
     })
     return instance
 }
 
-func (this *ParkingLot) Initialize(numberOfSlots int) {
+
+// Initialize all the data structures and fix the value of MaxSlots of Parking Lot
+func Initialize(numberOfSlots int) {
+    this := GetInstance()
     if numberOfSlots <= 0 {
         fmt.Println("Parking Lot of Size <= 0 cannot be created")
         return
     }
 
-    this.emptySlots = IntHeap{}
+    this.emptySlots = helpers.IntHeap{}
     i := 1
     for i <= numberOfSlots {
         this.emptySlots = append(this.emptySlots, i)
@@ -57,81 +72,76 @@ func (this *ParkingLot) Initialize(numberOfSlots int) {
     fmt.Println("Created a parking lot with " + strconv.Itoa(numberOfSlots) + " slots")
 }
 
-func (this *ParkingLot) mapRegNoToSlot(regNo string, slot int) {
-    this.regNoSlotMap[regNo] = slot;
-}
 
-
-func (this *ParkingLot) unmapRegNo(regNo string) {
-    delete(this.regNoSlotMap, regNo);
-}
-
-func (this *ParkingLot) mapSlotToCar(slot int, car Car) {
-    this.slotCarMap[slot] = car;
-
-}
-
-
-func (this *ParkingLot) unmapSlot(slot int) {
-    delete(this.slotCarMap, slot);
-}
-
-func (this *ParkingLot) mapColorToRegNo(color string, regNo string) {
-    _, exists := this.colorRegNoMap[color]
-    if exists {
-        this.colorRegNoMap[color][regNo] = true
-    } else {
-        this.colorRegNoMap[color] = map[string]bool{regNo:true}
-    }
-}
-
-
-func (this *ParkingLot) unmapRegNoFromColorMap(color string, regNo string) {
-    delete(this.colorRegNoMap[color], regNo);
-}
-
-
-func (this *ParkingLot) Park(car Car) {
+// Given a Car Object, park it at the nearest slot
+// The overall complexity of this function is O(log n)
+// The complexity arises from the fact that Extract-Min from a min heap of emptySlots is O(log n)
+// Rest all operations of HashMaps are O(1)
+func Park(car Car) error {
+    this := GetInstance()
     if (!this.isParkingLotCreated) {
-        fmt.Println("Parking Lot not created")
-        return
+        err := errors.New("Parking Lot not created")
+        fmt.Println(err.Error())
+        return err
     }
 
+    // Validate if the parking lot is already full or not
     if (this.emptySlots.Len() == 0) {
-        fmt.Println("Sorry, parking lot is full");
+        err := errors.New("Sorry, parking lot is full")
+        fmt.Println(err.Error())
+        return err
     } else {
 
-        if slot := this.GetSlotNoForRegNo(car.GetRegNo(), false); slot == 0 {
+        // Validate if the car is already parked somewhere to check mistyped input
+        if slot, _ := GetSlotNoForRegNo(car.GetRegNo(), false); slot == 0 {
+            // Complexity : O(log n)
             emptySlot := heap.Pop(&this.emptySlots)
-            this.mapRegNoToSlot(car.GetRegNo(), emptySlot.(int))
-            this.mapSlotToCar(emptySlot.(int), car)
-            this.mapColorToRegNo(car.GetColor(), car.GetRegNo())
+            mapRegNoToSlot(car.GetRegNo(), emptySlot.(int))
+            mapSlotToCar(emptySlot.(int), car)
+            mapColorToRegNo(car.GetColor(), car.GetRegNo())
             fmt.Println("Allocated slot number: " + strconv.Itoa(emptySlot.(int)));
+            return nil
         } else {
-            fmt.Println("Car with this registration number already parked at slot: " + strconv.Itoa(slot));
+            err := errors.New("Car with this registration number already parked at slot: " + strconv.Itoa(slot))
+            fmt.Println(err.Error())
+            return err
         }
 
     }
 }
 
-func (this *ParkingLot) Leave(slot int) {
+
+// Given a slot x, vacate it
+// The overall complexity of this function is O(log n)
+// The complexity arises rom the fact that insert to a min heap is O(log n)
+// All other operations on HashMaps are O(1)
+func Leave(slot int) error {
+    this := GetInstance()
     if (!this.isParkingLotCreated) {
-        fmt.Println("Parking Lot not created")
-        return
+        err := errors.New("Parking Lot not created")
+        fmt.Println(err.Error())
+        return err
     }
 
+    // Validate if the slot has some car parked there or not
     if car, exists := this.slotCarMap[slot]; exists {
+        // Complexity : O(log n)
         heap.Push(&this.emptySlots, slot)
-        this.unmapRegNo(car.GetRegNo())
-        this.unmapRegNoFromColorMap(car.GetColor(), car.GetRegNo())
-        this.unmapSlot(slot)
+        unmapRegNo(car.GetRegNo())
+        unmapRegNoFromColorMap(car.GetColor(), car.GetRegNo())
+        unmapSlot(slot)
         fmt.Println("Slot number " + strconv.Itoa(slot) + " is free")
+        return nil
     } else {
-        fmt.Println("No car parked on given slot")
+        err := errors.New("Not found")
+        fmt.Println(err.Error())
+        return err
     }
 }
 
-func (this *ParkingLot) Status() {
+// Output the status of the parking lot
+func Status() {
+    this := GetInstance()
     if (!this.isParkingLotCreated) {
         fmt.Println("Parking Lot not created")
         return
@@ -147,12 +157,16 @@ func (this *ParkingLot) Status() {
     }
 }
 
-func (this *ParkingLot) GetRegNosForCarsWithColor(color string, print bool) []string{
+// Fetch the Registration Numebrs of Cars with Given Color
+// Complexity is O(1) since we have stored the data in a HashMap->HashSet
+func GetRegNosForCarsWithColor(color string, print bool) ([]string, error) {
+    this := GetInstance()
     if (!this.isParkingLotCreated) {
+        err := errors.New("Parking Lot not created")
         if print {
-            fmt.Println("Parking Lot not created")
+            fmt.Println(err.Error())
         }
-        return []string{}
+        return []string{}, err
     }
 
     regNoSlice := []string{}
@@ -162,24 +176,35 @@ func (this *ParkingLot) GetRegNosForCarsWithColor(color string, print bool) []st
         }
     }
 
-    if print {
-        if len(regNoSlice) > 0 {
-            fmt.Println(strings.Join(regNoSlice, ","))
-        } else {
-            fmt.Println("No cars found with given colour")
-        }
-    }
 
-    return regNoSlice
+
+    if len(regNoSlice) > 0 {
+        if print {
+            fmt.Println(strings.Join(regNoSlice, ","))
+        }
+        return regNoSlice, nil
+    } else {
+        err := errors.New("Not found")
+        if print {
+            fmt.Println(err.Error())
+        }
+        return regNoSlice, err
+    }
 }
 
-func (this *ParkingLot) GetSlotNosForCarsWithColor(color string) {
+// Fetch Slot Numbers for Cars with Given Color
+// Complexity is O(m). We first we fetch registration numbers from HashSet which is O(1)
+// and then we fetch slots from registration numbers which again is HashMap. So if there are
+// m cars, it will take m iterations to fetch slot for each registration number
+func GetSlotNosForCarsWithColor(color string) error {
+    this := GetInstance()
     if (!this.isParkingLotCreated) {
-        fmt.Println("Parking Lot not created")
-        return
+        err := errors.New("Parking Lot not created")
+        fmt.Println(err.Error())
+        return err
     }
 
-    regNos := this.GetRegNosForCarsWithColor(color, false)
+    regNos, _ := GetRegNosForCarsWithColor(color, false)
     slots := []string{}
     for _, regNo := range regNos {
         if slot, exists := this.regNoSlotMap[regNo]; exists {
@@ -189,30 +214,46 @@ func (this *ParkingLot) GetSlotNosForCarsWithColor(color string) {
 
     if len(slots) > 0 {
         fmt.Println(strings.Join(slots, ","))
+        return nil
     } else {
-        fmt.Println("No cars found for given colour")
+        err := errors.New("Not found")
+        fmt.Println(err.Error())
+        return err
     }
 
 }
 
-func (this *ParkingLot) GetSlotNoForRegNo(regNo string, print bool) int {
+// Fetch slot number for given rgistration number
+// Complexity is O(1) since it is derived from a HashSet
+func GetSlotNoForRegNo(regNo string, print bool) (int, error) {
+    this := GetInstance()
     if (!this.isParkingLotCreated) {
+        err := errors.New("Parking Lot not created")
         if print {
-            fmt.Println("Parking Lot not created")
+            fmt.Println(err.Error())
         }
-        return 0
+        return 0, err
     }
 
+    // Validate if there is any car with given reg no
     if slot, exists := this.regNoSlotMap[regNo]; exists {
         if print {
             fmt.Println(slot)
         }
-        return slot
+        return slot, nil
     } else {
+        err := errors.New("Not found")
         if print {
-            fmt.Println("Car with this registration no not parked in any slot")
+            fmt.Println(err.Error())
         }
-        return 0
+        return 0, err
     }
 }
+
+// Initialize the parking lot in package init()
+// Singleton based initialization for Parking Lot Instance
+func init() {
+    instance = GetInstance()
+}
+
 
