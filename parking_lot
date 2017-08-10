@@ -3,7 +3,7 @@ INPUT_FILE=$1
 make
 
 if [ $? != 0 ]; then
-    echo "Build Failed"
+    echo "Build Failed Or Tests Failed. Please Check details above."
     exit
 fi
 
