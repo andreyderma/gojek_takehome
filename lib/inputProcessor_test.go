@@ -93,3 +93,22 @@ func TestProcessCommandWithRightCommand7(t *testing.T) {
 		t.Errorf("Test failed, expected: '%s', got:  '%s'", expected, actual.Error())
 	}
 }
+
+
+func TestProcessCommandWithRightCommand8(t *testing.T) {
+	expected := "strconv.Atoi: parsing \"a\": invalid syntax"
+	actual := processCommand("leave a").Error()
+	if actual != expected {
+		t.Errorf("Test failed, expected: '%s', got:  '%s'", expected, actual)
+	}
+}
+
+
+
+func TestProcessCommandWithRightCommand9(t *testing.T) {
+	expected := "strconv.Atoi: parsing \"a\": invalid syntax"
+	actual := processCommand("create_parking_lot a").Error()
+	if actual != expected {
+		t.Errorf("Test failed, expected: '%s', got:  '%s'", expected, actual)
+	}
+}

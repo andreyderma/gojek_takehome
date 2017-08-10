@@ -108,10 +108,8 @@ func processCommand(command string) error {
 				_, err := parkingLot.GetSlotNoForRegNo(regNo, true)
 				return err
 			})
-
-		default:
-			return errors.New("Not Reachable Code")
 		}
+		return errors.New("Not Reachable Code")
 	} else {
 		err := errors.New(UNSUPPORTED_COMMAND)
 		fmt.Println(err.Error())
