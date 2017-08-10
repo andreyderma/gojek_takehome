@@ -1,20 +1,20 @@
 package main
 
 import (
-    "os"
-    "github.com/mohakkataria/gojek_takehome/lib"
+	"github.com/mohakkataria/gojek_takehome/lib"
+	"os"
 )
 
 func main() {
-    argsWithoutProg := os.Args[1:]
+	argsWithoutProg := os.Args[1:]
 
-    if len(argsWithoutProg) > 0 {
-        // take commands from file
-        fileName := argsWithoutProg[0]
-        lib.ReadAndProcessFromFile(fileName)
-    } else {
-        //We need to make it interactive session now
-        lib.ReadAndProcessStdIn()
-    }
+	if len(argsWithoutProg) > 0 {
+		// take commands from file
+		fileName := argsWithoutProg[0]
+		lib.ReadAndProcessFromFile(fileName)
+	} else {
+		//We need to make it interactive session now
+		lib.ReadAndProcessStdIn()
+	}
 
 }

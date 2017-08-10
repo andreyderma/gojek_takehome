@@ -2,15 +2,17 @@ package lib
 
 import "fmt"
 
+// Wrapper Error struct
 type ErrWrapper struct {
-    err error
+	err error
 }
 
-func (ew *ErrWrapper) do(f func() error) bool {
-    ew.err = f();
-    if ew.err != nil {
-        fmt.Println(ew.err.Error())
-        return false
-    }
-    return true
+// Wrapper function to output the error for a given function
+func (ew *ErrWrapper) do(f func() error) error {
+	ew.err = f()
+	if ew.err != nil {
+		fmt.Println(ew.err.Error())
+		return ew.err
+	}
+	return nil
 }
