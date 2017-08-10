@@ -1,0 +1,14 @@
+#/bin/bash
+INPUT_FILE=$1
+make
+
+if [ $? != 0 ]; then
+    echo "Build Failed"
+    exit
+fi
+
+if [ -z "$1" ]; then
+    echo "INPUT:"
+    printf "\n"
+fi
+./gojek_takehome $1
